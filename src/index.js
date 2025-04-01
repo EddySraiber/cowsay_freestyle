@@ -6,8 +6,6 @@ const cowsay = require('cowsay');
 const request = require('request');
 const cheerio = require('cheerio');
 const compression = require('compression');
-const fs = require('fs');
-const ver = fs.readFileSync("/v.txt", "utf8");
 const app = exp();
 
 // gzip
@@ -24,31 +22,82 @@ app.use(helmet.hsts({
 // static files
 const p = './public';
 const publicFolderPath = path.join(__dirname, p);
-
 app.use(favicon(path.join(publicFolderPath, '/favicon.ico')));
 app.use(exp.static(publicFolderPath));
 
-app.get('/', function (req, res) {
+// Hardcoded Deepak Chopra-style quotes for fallback
+const deepakChopraQuotes = [
+  "Quantum physics discloses the architecture of the cosmos",
+  "The universe is a field of infinite possibilities",
+  "Your consciousness creates your unique reality",
+  "Healing transforms perceptions into spiritual knowledge",
+  "The physical world is a mirror of the unmanifested realm",
+  "Time is the continuity of eternal awareness",
+  "Imagination reveals the non-local nature of awareness",
+  "Perception is transformed by the mechanics of your soul",
+  "The secret of the universe exists within your own biology",
+  "Spontaneous fulfillment arises from infinite silence",
+  "Cosmic consciousness shapes your personal reality",
+  "Happiness exists in the rhythm of balanced energy",
+  "Meditation unveils the wisdom of your immortal essence",
+  "Your DNA is a portal to universal intelligence",
+  "Synchronicity is the universe's creative expression",
+  "Transformation occurs beyond the boundaries of logical thought",
+  "The field of pure potentiality transcends linear time",
+  "Love is the frequency that unifies all existence",
+  "Awareness blossoms in the garden of silent intention",
+  "Healing is the remembrance of your eternal nature"
+];
 
+// Function to get a random quote from our fallback array
+function getRandomQuote() {
+  const randomIndex = Math.floor(Math.random() * deepakChopraQuotes.length);
+  return deepakChopraQuotes[randomIndex];
+}
+
+app.get('/', function (req, res) {
+  // First try to fetch from original website
   var options = {
     method: 'GET',
-    url: 'http://www.wisdomofchopra.com/iframe.php'
+    url: 'http://www.wisdomofchopra.com/iframe.php',
+    // Short timeout so we don't wait too long if the site is down
+    timeout: 3000
   };
-
+  
   request(options, function (error, response, body) {
-    if (error) throw new Error(error);
-
-    var $ = cheerio.load(body);
-    const st = $('h2', '#quote').text().replace(/\"/g, '').replace(/\_/g, '')
-    const w = ver + `
-
+    if (error || !response || response.statusCode !== 200) {
+      // Website is down or error occurred, use fallback
+      console.log('Website is down or returned an error. Using fallback quotes.');
+      const randomQuote = getRandomQuote();
+      const w = `
+Deepak Chopra Quote (Fallback):
+" ${randomQuote}"
+      `;
+      const responseText = setCowsaySentence(w);
+      res.send(responseText);
+    } else {
+      // Website is up, parse the response as before
+      try {
+        var $ = cheerio.load(body);
+        const st = $('h2', '#quote').text().replace(/\"/g, '').replace(/\_/g, '');
+        const w = `
 Deepak Chopra Quote:
 " ${st}"
-
-    `;
-    const responseText = setCowsaySentence(w);
-    res.send(responseText);
-
+        `;
+        const responseText = setCowsaySentence(w);
+        res.send(responseText);
+      } catch (parseError) {
+        // If parsing fails, use fallback
+        console.log('Failed to parse response from website. Using fallback quotes.');
+        const randomQuote = getRandomQuote();
+        const w = `
+Deepak Chopra Quote:
+" ${randomQuote}"
+        `;
+        const responseText = setCowsaySentence(w);
+        res.send(responseText);
+      }
+    }
   });
 });
 
@@ -85,7 +134,6 @@ ${cowsay.say({
       <br/><br/>
     </body>
   </html>
-
 `;
 }
 
