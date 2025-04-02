@@ -11,4 +11,4 @@ COPY src /app/code
 COPY entry-point.sh version.txt /
 RUN chmod +x /entry-point.sh
 
-ENTRYPOINT ["/entry-point.sh 8081"] 
+ENTRYPOINT ["/entry-point.sh"] 
